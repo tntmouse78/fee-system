@@ -1,0 +1,622 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>수수료 관리 전산</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#f8f7f4;--surface:#ffffff;--surface2:#f1efe8;
+  --text:#1a1a18;--text2:#6b6a64;--text3:#9b9a94;
+  --border:#e0ded6;--border2:#c8c6bc;
+  --blue:#185FA5;--blue-light:#E6F1FB;--blue-dark:#0C447C;
+  --green:#0F6E56;--green-light:#E1F5EE;
+  --red:#A32D2D;--red-light:#FCEBEB;
+  --amber:#854F0B;--amber-light:#FAEEDA;
+  --radius:10px;--radius-sm:6px;
+}
+body{font-family:'Apple SD Gothic Neo','Malgun Gothic',sans-serif;background:var(--bg);color:var(--text);font-size:14px;min-height:100vh}
+.header{background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px;display:flex;align-items:center;justify-content:space-between;height:56px;position:sticky;top:0;z-index:100}
+.logo{font-size:16px;font-weight:700;color:var(--blue-dark)}
+.logo span{color:var(--text2);font-weight:400;font-size:13px;margin-left:8px}
+.header-right{font-size:12px;color:var(--text3)}
+.nav{display:flex;gap:2px;background:var(--surface);border-bottom:1px solid var(--border);padding:0 24px}
+.nav-btn{font-size:13px;padding:14px 18px;border:none;background:transparent;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;font-weight:500}
+.nav-btn:hover{color:var(--text)}
+.nav-btn.on{color:var(--blue);border-bottom-color:var(--blue)}
+.main{max-width:1100px;margin:0 auto;padding:24px}
+.page{display:none}.page.on{display:block}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:20px 24px;margin-bottom:16px}
+.card-title{font-size:12px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px}
+.metrics{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.metric{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px}
+.metric-label{font-size:11px;color:var(--text3);margin-bottom:6px;font-weight:500}
+.metric-value{font-size:22px;font-weight:700;color:var(--text)}
+.metric-sub{font-size:11px;color:var(--text3);margin-top:3px}
+.form-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(175px,1fr));gap:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group label{font-size:11px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.04em}
+.form-group input,.form-group select{font-size:13px;padding:9px 12px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);width:100%;font-family:inherit}
+.form-group input:focus,.form-group select:focus{outline:none;border-color:var(--blue)}
+.preview-box{margin-top:14px;padding:12px 16px;background:var(--blue-light);border-radius:var(--radius-sm);font-size:13px;display:flex;gap:24px}
+.preview-box span{color:var(--text2)}
+.preview-box strong{color:var(--blue-dark)}
+.btn-row{display:flex;gap:8px;margin-top:16px}
+.btn{padding:9px 20px;border-radius:var(--radius-sm);border:1px solid var(--border2);background:var(--surface);color:var(--text);cursor:pointer;font-size:13px;font-weight:500;font-family:inherit}
+.btn:hover{background:var(--surface2)}
+.btn-primary{background:var(--blue);color:#fff;border-color:var(--blue)}
+.btn-primary:hover{background:var(--blue-dark)}
+.btn-sm{padding:5px 12px;font-size:12px}
+.btn-danger{color:var(--red);border-color:var(--red);background:transparent}
+.btn-danger:hover{background:var(--red-light)}
+.tbl-wrap{overflow-x:auto;border:1px solid var(--border);border-radius:var(--radius)}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th{background:var(--surface2);color:var(--text2);font-weight:600;font-size:11px;padding:10px 12px;text-align:left;border-bottom:1px solid var(--border);white-space:nowrap;text-transform:uppercase;letter-spacing:.04em}
+td{padding:10px 12px;border-bottom:1px solid var(--border);color:var(--text);white-space:nowrap}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:var(--surface2)}
+.num{text-align:right}
+.tbl-footer{padding:12px 16px;background:var(--surface2);border-top:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;gap:20px;flex-wrap:wrap}
+.badge{display:inline-block;font-size:11px;padding:3px 9px;border-radius:20px;font-weight:600}
+.badge-ok{background:var(--green-light);color:var(--green)}
+.badge-pend{background:var(--amber-light);color:var(--amber)}
+.filters{display:flex;gap:8px;margin-bottom:14px;flex-wrap:wrap;align-items:center}
+.filters select,.filters input{font-size:12px;padding:7px 10px;border:1px solid var(--border2);border-radius:var(--radius-sm);background:var(--surface);color:var(--text);font-family:inherit}
+.chart-wrap{position:relative;width:100%}
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.co-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:12px}
+.co-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 20px}
+.co-name{font-size:15px;font-weight:700;color:var(--text);margin-bottom:2px}
+.co-cnt{font-size:11px;color:var(--text3)}
+.co-income{font-size:18px;font-weight:700;color:var(--blue-dark)}
+.co-pend{font-size:11px;color:var(--red);margin-top:1px}
+.bar-track{height:5px;background:var(--surface2);border-radius:3px;overflow:hidden;margin:10px 0 6px}
+.bar-fill{height:100%;border-radius:3px}
+.co-stats{display:flex;justify-content:space-between;font-size:11px;color:var(--text3)}
+.settle-summary{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px;margin-bottom:16px}
+.empty{text-align:center;padding:48px;color:var(--text3)}
+.today-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.today-item:last-child{border-bottom:none}
+.week-item{display:flex;justify-content:space-between;align-items:center;padding:10px 0;border-bottom:1px solid var(--border)}
+.week-item:last-child{border-bottom:none}
+@media(max-width:600px){
+  .main{padding:16px}
+  .metrics{grid-template-columns:repeat(2,1fr)}
+  .two-col{grid-template-columns:1fr}
+  .nav-btn{padding:12px 10px;font-size:12px}
+}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="logo">부안전대 수수료 관리<span>Fee Management System</span></div>
+  <div class="header-right" id="hdr-date"></div>
+</div>
+<div class="nav">
+  <button class="nav-btn on" onclick="go('입력',this)">✎ 입력</button>
+  <button class="nav-btn" onclick="go('대장',this)">☰ 거래대장</button>
+  <button class="nav-btn" onclick="go('분석',this)">▶ 수입분석</button>
+  <button class="nav-btn" onclick="go('업체',this)">◆ 업체별</button>
+  <button class="nav-btn" onclick="go('정산',this)">✔ 정산관리</button>
+</div>
+<div class="main">
+
+<!-- 입력 -->
+<div id="pg-입력" class="page on">
+  <div class="card">
+    <div class="card-title">신규 거래 입력</div>
+    <div class="form-grid">
+      <div class="form-group"><label>승인날짜</label><input type="date" id="f-date"></div>
+      <div class="form-group"><label>IS업체</label>
+        <select id="f-company" onchange="onCoChange()">
+          <option value="">선택하세요</option>
+          <option>ST비</option><option>페퍼</option><option>뉴2</option>
+          <option>7786</option><option>8184</option><option>4652</option>
+          <option>1028</option><option>왕실장</option><option>천과장</option><option>대박</option>
+          <option value="__custom__">직접입력</option>
+        </select>
+      </div>
+      <div class="form-group" id="custom-co-wrap" style="display:none">
+        <label>업체명 직접입력</label>
+        <input type="text" id="f-company-custom" placeholder="업체명 입력">
+      </div>
+      <div class="form-group"><label>고객명</label><input type="text" id="f-client" placeholder="고객명"></div>
+      <div class="form-group"><label>티/지</label>
+        <select id="f-type"><option>상담사</option><option>지사</option><option>기타</option></select>
+      </div>
+      <div class="form-group"><label>승인금액 (볼륨)</label>
+        <input type="number" id="f-vol" placeholder="0" step="10000" oninput="updatePreview()">
+      </div>
+      <div class="form-group"><label>원수수료율 (%)</label>
+        <input type="number" id="f-rate" placeholder="12" step="0.1" oninput="updatePreview()">
+      </div>
+      <div class="form-group"><label>지사수수료율 (%)</label>
+        <input type="number" id="f-rate2" placeholder="0" step="0.1" oninput="updatePreview()">
+      </div>
+      <div class="form-group"><label>당사수수료율 (%)</label>
+        <input type="number" id="f-rate3" placeholder="0" step="0.1" oninput="updatePreview()">
+      </div>
+      <div class="form-group"><label>정산여부</label>
+        <select id="f-settle"><option value="미정산">미정산</option><option value="정산완료">정산완료</option></select>
+      </div>
+      <div class="form-group"><label>메모</label><input type="text" id="f-memo" placeholder="메모"></div>
+    </div>
+    <div class="preview-box">
+      <span>수수료 합계: <strong id="prev-fee">-</strong></span>
+      <span>수입 (잔고현황): <strong id="prev-inc">-</strong></span>
+    </div>
+    <div class="btn-row">
+      <button class="btn btn-primary" onclick="addRecord()">저장</button>
+      <button class="btn" onclick="clearForm()">초기화</button>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">오늘 입력 내역</div>
+    <div id="today-list"><div class="empty">오늘 입력된 거래가 없습니다</div></div>
+  </div>
+</div>
+
+<!-- 거래대장 -->
+<div id="pg-대장" class="page">
+  <div class="filters">
+    <select id="fl-year" onchange="renderLedger()"><option>2026</option><option>2025</option></select>
+    <select id="fl-month" onchange="renderLedger()">
+      <option value="">전체 월</option>
+      <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
+      <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
+      <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
+      <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+    </select>
+    <select id="fl-co" onchange="renderLedger()"><option value="">업체 전체</option></select>
+    <select id="fl-settle" onchange="renderLedger()">
+      <option value="">정산 전체</option><option value="미정산">미정산</option><option value="정산완료">정산완료</option>
+    </select>
+    <input type="text" id="fl-search" placeholder="고객명 검색" oninput="renderLedger()" style="width:130px">
+    <button class="btn btn-sm" onclick="exportCSV()">CSV 내보내기</button>
+  </div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:95px">날짜</th>
+        <th style="width:60px">티/지</th>
+        <th style="width:75px">업체</th>
+        <th style="width:90px">고객명</th>
+        <th class="num" style="width:115px">볼륨 (원)</th>
+        <th class="num" style="width:75px">수수료율</th>
+        <th class="num" style="width:105px">수수료 (원)</th>
+        <th class="num" style="width:115px">수입 (원)</th>
+        <th style="width:75px">정산</th>
+        <th style="width:90px">메모</th>
+        <th style="width:50px"></th>
+      </tr></thead>
+      <tbody id="ledger-body"></tbody>
+    </table>
+    <div class="tbl-footer" id="ledger-footer"></div>
+  </div>
+</div>
+
+<!-- 수입분석 -->
+<div id="pg-분석" class="page">
+  <div class="metrics" id="ana-metrics"></div>
+  <div class="two-col">
+    <div class="card">
+      <div class="card-title">주별 수입</div>
+      <div id="weekly-list"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">일별 수입 추이</div>
+      <div class="chart-wrap" style="height:220px"><canvas id="daily-chart"></canvas></div>
+    </div>
+  </div>
+  <div class="card">
+    <div class="card-title">월별 수입</div>
+    <div class="chart-wrap" style="height:200px"><canvas id="monthly-chart"></canvas></div>
+  </div>
+</div>
+
+<!-- 업체별 -->
+<div id="pg-업체" class="page">
+  <div class="filters">
+    <select id="co-year" onchange="renderCompany()"><option>2026</option><option>2025</option></select>
+    <select id="co-month" onchange="renderCompany()">
+      <option value="">전체 월</option>
+      <option value="01">1월</option><option value="02">2월</option><option value="03">3월</option>
+      <option value="04">4월</option><option value="05">5월</option><option value="06">6월</option>
+      <option value="07">7월</option><option value="08">8월</option><option value="09">9월</option>
+      <option value="10">10월</option><option value="11">11월</option><option value="12">12월</option>
+    </select>
+  </div>
+  <div class="co-grid" id="co-cards"></div>
+</div>
+
+<!-- 정산관리 -->
+<div id="pg-정산" class="page">
+  <div class="filters">
+    <select id="st-co" onchange="renderSettle()"><option value="">업체 전체</option></select>
+    <select id="st-status" onchange="renderSettle()">
+      <option value="">전체</option><option value="미정산">미정산</option><option value="정산완료">정산완료</option>
+    </select>
+    <button class="btn btn-sm btn-primary" onclick="bulkSettle()">선택 정산완료 처리</button>
+    <button class="btn btn-sm" onclick="bulkUnsettle()">선택 미정산 복원</button>
+  </div>
+  <div class="settle-summary" id="settle-metrics"></div>
+  <div class="tbl-wrap">
+    <table>
+      <thead><tr>
+        <th style="width:36px"><input type="checkbox" id="chk-all" onchange="toggleAll(this)"></th>
+        <th style="width:95px">날짜</th>
+        <th style="width:75px">업체</th>
+        <th style="width:90px">고객명</th>
+        <th class="num" style="width:115px">볼륨 (원)</th>
+        <th class="num" style="width:115px">수입 (원)</th>
+        <th style="width:85px">정산여부</th>
+        <th>메모</th>
+      </tr></thead>
+      <tbody id="settle-body"></tbody>
+    </table>
+  </div>
+</div>
+
+</div>
+<script>
+const SEED=[
+{"date":"2026-03-03","type":"상담사","company":"ST비","client":"최성범","vol":2000000,"rate":0.13,"rate2":0,"rate3":0.13,"fee":260000,"income":260000,"settle":"미정산","memo":""},
+{"date":"2026-03-04","type":"상담사","company":"7786","client":"김미숙","vol":5000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":600000,"income":600000,"settle":"미정산","memo":""},
+{"date":"2026-03-05","type":"상담사","company":"페퍼","client":"김윤미","vol":3000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":360000,"income":360000,"settle":"미정산","memo":""},
+{"date":"2026-03-05","type":"상담사","company":"페퍼","client":"김필수","vol":10000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":1200000,"income":1200000,"settle":"미정산","memo":""},
+{"date":"2026-03-06","type":"상담사","company":"페퍼","client":"유현승","vol":35000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":4200000,"income":4200000,"settle":"미정산","memo":""},
+{"date":"2026-03-06","type":"상담사","company":"ST비","client":"고성애","vol":1000000,"rate":0.13,"rate2":0,"rate3":0.13,"fee":130000,"income":130000,"settle":"미정산","memo":""},
+{"date":"2026-03-09","type":"상담사","company":"8184","client":"모세종","vol":5000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":600000,"income":600000,"settle":"미정산","memo":""},
+{"date":"2026-03-09","type":"상담사","company":"뉴2","client":"김원열","vol":20000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":2400000,"income":2400000,"settle":"미정산","memo":""},
+{"date":"2026-03-09","type":"상담사","company":"페퍼","client":"김호","vol":30000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":3600000,"income":3600000,"settle":"미정산","memo":""},
+{"date":"2026-03-10","type":"상담사","company":"왕실장","client":"이상준","vol":2000000,"rate":0.2,"rate2":0,"rate3":0.2,"fee":400000,"income":400000,"settle":"미정산","memo":""},
+{"date":"2026-03-11","type":"상담사","company":"8184","client":"나혜민","vol":5000000,"rate":0.16,"rate2":0,"rate3":0.16,"fee":800000,"income":800000,"settle":"미정산","memo":""},
+{"date":"2026-03-12","type":"상담사","company":"왕실장","client":"오경철","vol":500000,"rate":0.2,"rate2":0,"rate3":0.2,"fee":100000,"income":100000,"settle":"미정산","memo":""},
+{"date":"2026-03-12","type":"상담사","company":"왕실장","client":"김동권","vol":1000000,"rate":0.2,"rate2":0,"rate3":0.2,"fee":200000,"income":200000,"settle":"미정산","memo":""},
+{"date":"2026-03-13","type":"상담사","company":"왕실장","client":"문영주","vol":1000000,"rate":0.2,"rate2":0,"rate3":0.2,"fee":200000,"income":200000,"settle":"미정산","memo":""},
+{"date":"2026-03-16","type":"상담사","company":"뉴2","client":"정철우","vol":10000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":1200000,"income":1200000,"settle":"미정산","memo":""},
+{"date":"2026-03-17","type":"상담사","company":"ST비","client":"이상준","vol":3000000,"rate":0.13,"rate2":0,"rate3":0.13,"fee":390000,"income":390000,"settle":"미정산","memo":""},
+{"date":"2026-03-17","type":"상담사","company":"왕실장","client":"김종경","vol":1000000,"rate":0.2,"rate2":0,"rate3":0.2,"fee":200000,"income":200000,"settle":"미정산","memo":""},
+{"date":"2026-03-18","type":"상담사","company":"천과장","client":"최경우","vol":4000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":480000,"income":480000,"settle":"미정산","memo":""},
+{"date":"2026-03-18","type":"상담사","company":"페퍼","client":"추영신","vol":10000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":1200000,"income":1200000,"settle":"미정산","memo":""},
+{"date":"2026-03-18","type":"상담사","company":"ST비","client":"황순옥","vol":1000000,"rate":0.13,"rate2":0,"rate3":0.13,"fee":130000,"income":130000,"settle":"미정산","memo":""},
+{"date":"2026-03-18","type":"상담사","company":"ST비","client":"한태환","vol":2000000,"rate":0.13,"rate2":0,"rate3":0.13,"fee":260000,"income":260000,"settle":"미정산","memo":""},
+{"date":"2026-03-18","type":"상담사","company":"4652","client":"박상혁","vol":5000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":500000,"income":500000,"settle":"미정산","memo":""},
+{"date":"2026-03-19","type":"상담사","company":"1028","client":"홍성자","vol":50000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":6000000,"income":6000000,"settle":"미정산","memo":""},
+{"date":"2026-03-19","type":"상담사","company":"4652","client":"정미라","vol":4000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":400000,"income":400000,"settle":"미정산","memo":""},
+{"date":"2026-03-19","type":"상담사","company":"ST비","client":"윤석현","vol":1500000,"rate":0.13,"rate2":0,"rate3":0.13,"fee":195000,"income":195000,"settle":"미정산","memo":""},
+{"date":"2026-03-19","type":"상담사","company":"천과장","client":"최기봉","vol":3000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":360000,"income":360000,"settle":"미정산","memo":""},
+{"date":"2026-03-19","type":"상담사","company":"4652","client":"정선우","vol":8000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":800000,"income":800000,"settle":"미정산","memo":""},
+{"date":"2026-03-20","type":"상담사","company":"뉴2","client":"백종우","vol":10000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":1200000,"income":1200000,"settle":"미정산","memo":""},
+{"date":"2026-03-20","type":"상담사","company":"4652","client":"전청민","vol":10000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":1000000,"income":1000000,"settle":"미정산","memo":""},
+{"date":"2026-03-20","type":"상담사","company":"4652","client":"이승현","vol":5000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":500000,"income":500000,"settle":"미정산","memo":""},
+{"date":"2026-03-20","type":"상담사","company":"페퍼","client":"전인정","vol":5000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":600000,"income":600000,"settle":"미정산","memo":""},
+{"date":"2026-03-20","type":"상담사","company":"4652","client":"장영섭","vol":3000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":300000,"income":300000,"settle":"미정산","memo":""},
+{"date":"2026-03-20","type":"상담사","company":"왕실장","client":"윤석현","vol":1000000,"rate":0.2,"rate2":0,"rate3":0.2,"fee":200000,"income":200000,"settle":"미정산","memo":""},
+{"date":"2026-03-20","type":"상담사","company":"왕실장","client":"선동준","vol":1500000,"rate":0.2,"rate2":0,"rate3":0.2,"fee":300000,"income":300000,"settle":"미정산","memo":""},
+{"date":"2026-03-23","type":"상담사","company":"왕실장","client":"문지영","vol":1000000,"rate":0.2,"rate2":0,"rate3":0.2,"fee":200000,"income":200000,"settle":"미정산","memo":""},
+{"date":"2026-03-23","type":"상담사","company":"4652","client":"한태환","vol":2000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":200000,"income":200000,"settle":"미정산","memo":""},
+{"date":"2026-03-23","type":"상담사","company":"4652","client":"이상준","vol":3000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":300000,"income":300000,"settle":"미정산","memo":""},
+{"date":"2026-03-23","type":"상담사","company":"4652","client":"선동준","vol":3000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":300000,"income":300000,"settle":"미정산","memo":""},
+{"date":"2026-03-23","type":"상담사","company":"8184","client":"정종택","vol":5000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":600000,"income":600000,"settle":"미정산","memo":""},
+{"date":"2026-03-24","type":"상담사","company":"4652","client":"성주현","vol":3000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":300000,"income":300000,"settle":"미정산","memo":""},
+{"date":"2026-03-24","type":"상담사","company":"대박","client":"류형룡","vol":6000000,"rate":0.15,"rate2":0,"rate3":0.15,"fee":900000,"income":900000,"settle":"미정산","memo":""},
+{"date":"2026-03-24","type":"상담사","company":"4652","client":"이영옥","vol":4000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":400000,"income":400000,"settle":"미정산","memo":""},
+{"date":"2026-03-24","type":"상담사","company":"4652","client":"김원준","vol":8000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":800000,"income":800000,"settle":"미정산","memo":""},
+{"date":"2026-03-24","type":"상담사","company":"왕실장","client":"석수진","vol":1000000,"rate":0.2,"rate2":0,"rate3":0.2,"fee":200000,"income":200000,"settle":"미정산","memo":""},
+{"date":"2026-03-25","type":"상담사","company":"4652","client":"김국현","vol":2000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":200000,"income":200000,"settle":"미정산","memo":""},
+{"date":"2026-03-26","type":"상담사","company":"뉴2","client":"정도희","vol":150000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":18000000,"income":18000000,"settle":"미정산","memo":""},
+{"date":"2026-03-26","type":"상담사","company":"4652","client":"나의연","vol":3000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":300000,"income":300000,"settle":"미정산","memo":""},
+{"date":"2026-03-27","type":"상담사","company":"뉴2","client":"이은순","vol":10000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":1200000,"income":1200000,"settle":"미정산","memo":""},
+{"date":"2026-03-27","type":"상담사","company":"4652","client":"강용희","vol":2000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":200000,"income":200000,"settle":"미정산","memo":""},
+{"date":"2026-03-30","type":"상담사","company":"뉴2","client":"황현숙","vol":10000000,"rate":0.12,"rate2":0,"rate3":0.12,"fee":1200000,"income":1200000,"settle":"미정산","memo":""},
+{"date":"2026-03-30","type":"상담사","company":"4652","client":"권구","vol":8000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":800000,"income":800000,"settle":"미정산","memo":""},
+{"date":"2026-03-31","type":"상담사","company":"4652","client":"문영주","vol":4000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":400000,"income":400000,"settle":"미정산","memo":""},
+{"date":"2026-03-31","type":"상담사","company":"왕실장","client":"권구","vol":2500000,"rate":0.2,"rate2":0,"rate3":0.2,"fee":500000,"income":500000,"settle":"미정산","memo":""},
+{"date":"2026-03-31","type":"상담사","company":"ST비","client":"오경철","vol":1000000,"rate":0.13,"rate2":0,"rate3":0.13,"fee":130000,"income":130000,"settle":"미정산","memo":""},
+{"date":"2026-03-31","type":"상담사","company":"4652","client":"최선경","vol":2000000,"rate":0.1,"rate2":0,"rate3":0.1,"fee":200000,"income":200000,"settle":"미정산","memo":""}
+];
+SEED.forEach((r,i)=>r.id=i+1);
+
+let DB=JSON.parse(localStorage.getItem('feeDB_v3')||'null')||SEED;
+let nextId=Math.max(...DB.map(r=>r.id),0)+1;
+let charts={};
+
+function save(){localStorage.setItem('feeDB_v3',JSON.stringify(DB));}
+function w(n){return Math.round(n).toLocaleString('ko-KR');}
+function pct(r){return(r*100).toFixed(1)+'%';}
+function getToday(){return new Date().toISOString().slice(0,10);}
+
+(function(){
+  const now=new Date();
+  document.getElementById('hdr-date').textContent=now.getFullYear()+'년 '+(now.getMonth()+1)+'월 '+now.getDate()+'일';
+  document.getElementById('f-date').value=getToday();
+})();
+
+function go(pg,btn){
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('on'));
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('on'));
+  if(btn)btn.classList.add('on');
+  document.getElementById('pg-'+pg).classList.add('on');
+  if(pg==='대장')renderLedger();
+  if(pg==='분석')renderAnalysis();
+  if(pg==='업체')renderCompany();
+  if(pg==='정산')renderSettle();
+  if(pg==='입력')renderToday();
+}
+
+function onCoChange(){
+  const v=document.getElementById('f-company').value;
+  document.getElementById('custom-co-wrap').style.display=v==='__custom__'?'':'none';
+  if(v&&v!=='__custom__'){
+    const rows=DB.filter(r=>r.company===v);
+    if(rows.length){
+      const last=rows[rows.length-1];
+      document.getElementById('f-rate').value=(last.rate*100).toFixed(1);
+      document.getElementById('f-rate2').value=(last.rate2*100).toFixed(1);
+      document.getElementById('f-rate3').value=(last.rate3*100).toFixed(1);
+      updatePreview();
+    }
+  }
+}
+
+function updatePreview(){
+  const vol=parseFloat(document.getElementById('f-vol').value)||0;
+  const r=parseFloat(document.getElementById('f-rate').value)||0;
+  const r3=parseFloat(document.getElementById('f-rate3').value)||0;
+  document.getElementById('prev-fee').textContent=vol?w(Math.round(vol*r/100))+'원':'-';
+  document.getElementById('prev-inc').textContent=vol?w(Math.round(vol*r3/100))+'원':'-';
+}
+
+function addRecord(){
+  const d=document.getElementById('f-date').value;
+  let co=document.getElementById('f-company').value;
+  if(co==='__custom__')co=document.getElementById('f-company-custom').value.trim();
+  const cl=document.getElementById('f-client').value.trim();
+  const vol=parseFloat(document.getElementById('f-vol').value)||0;
+  const r=parseFloat(document.getElementById('f-rate').value)||0;
+  const r2=parseFloat(document.getElementById('f-rate2').value)||0;
+  const r3=parseFloat(document.getElementById('f-rate3').value)||0;
+  if(!d||!co||!cl||!vol){alert('날짜, 업체, 고객명, 볼륨은 필수입니다.');return;}
+  DB.push({id:nextId++,date:d,type:document.getElementById('f-type').value,
+    company:co,client:cl,vol,rate:r/100,rate2:r2/100,rate3:r3/100,
+    fee:Math.round(vol*r/100),income:Math.round(vol*r3/100),
+    settle:document.getElementById('f-settle').value,
+    memo:document.getElementById('f-memo').value.trim()});
+  save();clearForm();renderToday();
+  alert('저장되었습니다!');
+}
+
+function clearForm(){
+  ['f-client','f-vol','f-rate','f-rate2','f-rate3','f-memo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('f-company').value='';
+  document.getElementById('f-settle').value='미정산';
+  document.getElementById('custom-co-wrap').style.display='none';
+  document.getElementById('prev-fee').textContent='-';
+  document.getElementById('prev-inc').textContent='-';
+}
+
+function renderToday(){
+  const today=getToday();
+  const rows=DB.filter(r=>r.date===today);
+  const el=document.getElementById('today-list');
+  if(!rows.length){el.innerHTML='<div class="empty">오늘 입력된 거래가 없습니다</div>';return;}
+  el.innerHTML=rows.map(r=>`<div class="today-item">
+    <div><span style="font-weight:600">${r.client}</span><span style="color:var(--text3);font-size:12px;margin-left:8px">${r.company}</span></div>
+    <div style="text-align:right">
+      <div style="font-weight:700;color:var(--blue-dark)">${w(r.income)}원</div>
+      <div style="font-size:11px;color:var(--text3)">볼륨 ${w(r.vol)}</div>
+    </div>
+  </div>`).join('');
+}
+
+function getCompanies(){return[...new Set(DB.map(r=>r.company))].sort();}
+
+function refreshSelects(){
+  const cos=getCompanies();
+  ['fl-co','st-co'].forEach(id=>{
+    const el=document.getElementById(id);if(!el)return;
+    const cur=el.value;
+    el.innerHTML='<option value="">업체 전체</option>'+cos.map(c=>`<option${c===cur?' selected':''}>${c}</option>`).join('');
+  });
+}
+
+function filteredRows(){
+  const yr=document.getElementById('fl-year')?.value||'';
+  const mo=document.getElementById('fl-month')?.value||'';
+  const co=document.getElementById('fl-co')?.value||'';
+  const se=document.getElementById('fl-settle')?.value||'';
+  const q=(document.getElementById('fl-search')?.value||'').trim();
+  return DB.filter(r=>{
+    if(yr&&!r.date.startsWith(yr))return false;
+    if(mo&&!r.date.startsWith(yr+'-'+mo))return false;
+    if(co&&r.company!==co)return false;
+    if(se&&r.settle!==se)return false;
+    if(q&&!r.client.includes(q))return false;
+    return true;
+  }).sort((a,b)=>a.date.localeCompare(b.date));
+}
+
+function renderLedger(){
+  refreshSelects();
+  const rows=filteredRows();
+  const tbody=document.getElementById('ledger-body');
+  if(!rows.length){tbody.innerHTML='<tr><td colspan="11" class="empty">해당 데이터가 없습니다</td></tr>';return;}
+  tbody.innerHTML=rows.map(r=>`<tr>
+    <td>${r.date}</td><td>${r.type}</td><td>${r.company}</td><td>${r.client}</td>
+    <td class="num">${w(r.vol)}</td>
+    <td class="num">${pct(r.rate)}</td>
+    <td class="num">${w(r.fee)}</td>
+    <td class="num" style="font-weight:700;color:var(--blue-dark)">${w(r.income)}</td>
+    <td><span class="badge ${r.settle==='정산완료'?'badge-ok':'badge-pend'}">${r.settle}</span></td>
+    <td style="color:var(--text3);font-size:12px">${r.memo}</td>
+    <td><button class="btn btn-sm btn-danger" onclick="delRecord(${r.id})">삭제</button></td>
+  </tr>`).join('');
+  const tv=rows.reduce((s,r)=>s+r.vol,0);
+  const ti=rows.reduce((s,r)=>s+r.income,0);
+  document.getElementById('ledger-footer').innerHTML=
+    `<span>총 <strong>${rows.length}건</strong></span>
+     <span>볼륨 합계: <strong>${w(tv)}원</strong></span>
+     <span>수입 합계: <strong>${w(ti)}원</strong></span>
+     <span>평균 수수료율: <strong>${tv?pct(ti/tv):'0%'}</strong></span>`;
+}
+
+function delRecord(id){
+  if(!confirm('삭제하시겠습니까?'))return;
+  DB=DB.filter(r=>r.id!==id);save();renderLedger();
+}
+
+function exportCSV(){
+  const rows=filteredRows();
+  const hdr=['날짜','티지','업체','고객명','볼륨','수수료율','수수료','수입','정산','메모'];
+  const lines=[hdr.join(','),...rows.map(r=>[r.date,r.type,r.company,r.client,r.vol,(r.rate*100).toFixed(1),r.fee,r.income,r.settle,r.memo].join(','))];
+  const blob=new Blob(['\uFEFF'+lines.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download='수수료대장_'+getToday()+'.csv';
+  a.click();
+}
+
+function destroyChart(key){if(charts[key]){charts[key].destroy();delete charts[key];}}
+
+function renderAnalysis(){
+  const rows=DB;
+  const tv=rows.reduce((s,r)=>s+r.vol,0);
+  const ti=rows.reduce((s,r)=>s+r.income,0);
+  const pend=rows.filter(r=>r.settle==='미정산').reduce((s,r)=>s+r.income,0);
+  document.getElementById('ana-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">총 볼륨</div><div class="metric-value">${(tv/100000000).toFixed(2)}억</div><div class="metric-sub">원</div></div>
+    <div class="metric"><div class="metric-label">총 수입</div><div class="metric-value">${(ti/10000).toLocaleString()}만</div><div class="metric-sub">원</div></div>
+    <div class="metric"><div class="metric-label">평균 수수료율</div><div class="metric-value">${tv?pct(ti/tv):'0%'}</div><div class="metric-sub">${rows.length}건</div></div>
+    <div class="metric"><div class="metric-label">미정산 잔액</div><div class="metric-value" style="color:var(--red)">${(pend/10000).toLocaleString()}만</div><div class="metric-sub">원</div></div>`;
+
+  const byWeek={};
+  rows.forEach(r=>{
+    const dt=new Date(r.date);
+    const mon=new Date(dt);mon.setDate(dt.getDate()-((dt.getDay()+6)%7));
+    const key=mon.toISOString().slice(0,10);
+    if(!byWeek[key])byWeek[key]={vol:0,inc:0};
+    byWeek[key].vol+=r.vol;byWeek[key].inc+=r.income;
+  });
+  const wkeys=Object.keys(byWeek).sort();
+  document.getElementById('weekly-list').innerHTML=wkeys.map(k=>{
+    const end=new Date(k);end.setDate(end.getDate()+6);
+    const label=k.slice(5)+'~'+(end.getMonth()+1)+'/'+(end.getDate());
+    return`<div class="week-item">
+      <span style="font-size:12px;color:var(--text2)">${label}</span>
+      <div style="text-align:right">
+        <div style="font-weight:700">${w(byWeek[k].inc)}원</div>
+        <div style="font-size:11px;color:var(--text3)">볼륨 ${w(byWeek[k].vol)}</div>
+      </div>
+    </div>`;
+  }).join('');
+
+  const byDate={};
+  rows.forEach(r=>{byDate[r.date]=(byDate[r.date]||0)+r.income;});
+  const dates=Object.keys(byDate).sort();
+  destroyChart('daily');
+  charts.daily=new Chart(document.getElementById('daily-chart'),{
+    type:'bar',
+    data:{labels:dates.map(d=>d.slice(5)),datasets:[{label:'일 수입',data:dates.map(d=>byDate[d]),backgroundColor:'#378ADD',borderRadius:3,barPercentage:0.65}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:9},autoSkip:true,maxRotation:45},grid:{display:false}},
+              y:{ticks:{font:{size:9},callback:v=>Math.round(v/10000)+'만'},grid:{color:'rgba(0,0,0,0.06)'}}}}
+  });
+
+  const byMonth={};
+  rows.forEach(r=>{const m=r.date.slice(0,7);byMonth[m]=(byMonth[m]||0)+r.income;});
+  const months=Object.keys(byMonth).sort();
+  destroyChart('monthly');
+  charts.monthly=new Chart(document.getElementById('monthly-chart'),{
+    type:'bar',
+    data:{labels:months.map(m=>m.slice(5)+'월'),datasets:[{label:'월 수입',data:months.map(m=>byMonth[m]),backgroundColor:'#1D9E75',borderRadius:4,barPercentage:0.5}]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{x:{ticks:{font:{size:11}},grid:{display:false}},
+              y:{ticks:{font:{size:10},callback:v=>Math.round(v/10000)+'만'},grid:{color:'rgba(0,0,0,0.06)'}}}}
+  });
+}
+
+const CO_COLORS=['#185FA5','#1D9E75','#D85A30','#7F77DD','#BA7517','#D4537E','#639922','#888780','#A32D2D','#0F6E56'];
+
+function renderCompany(){
+  const yr=document.getElementById('co-year')?.value||'';
+  const mo=document.getElementById('co-month')?.value||'';
+  const rows=DB.filter(r=>{
+    if(yr&&!r.date.startsWith(yr))return false;
+    if(mo&&!r.date.startsWith(yr+'-'+mo))return false;
+    return true;
+  });
+  const byco={};
+  rows.forEach(r=>{
+    if(!byco[r.company])byco[r.company]={vol:0,inc:0,cnt:0,pend:0};
+    byco[r.company].vol+=r.vol;byco[r.company].inc+=r.income;byco[r.company].cnt++;
+    if(r.settle==='미정산')byco[r.company].pend+=r.income;
+  });
+  const sorted=Object.entries(byco).sort((a,b)=>b[1].inc-a[1].inc);
+  const maxInc=sorted[0]?.[1]?.inc||1;
+  document.getElementById('co-cards').innerHTML=sorted.map(([co,v],i)=>`
+    <div class="co-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:10px">
+        <div><div class="co-name">${co}</div><div class="co-cnt">${v.cnt}건</div></div>
+        <div style="text-align:right">
+          <div class="co-income">${w(v.inc)}원</div>
+          ${v.pend>0?`<div class="co-pend">미정산 ${w(v.pend)}원</div>`:'<div style="font-size:11px;color:var(--green)">정산완료</div>'}
+        </div>
+      </div>
+      <div class="bar-track"><div class="bar-fill" style="width:${Math.round(v.inc/maxInc*100)}%;background:${CO_COLORS[i%CO_COLORS.length]}"></div></div>
+      <div class="co-stats"><span>볼륨 ${w(v.vol)}원</span><span>수수료율 ${pct(v.inc/v.vol)}</span></div>
+    </div>`).join('');
+}
+
+function renderSettle(){
+  refreshSelects();
+  const co=document.getElementById('st-co')?.value||'';
+  const se=document.getElementById('st-status')?.value||'';
+  const rows=DB.filter(r=>{
+    if(co&&r.company!==co)return false;
+    if(se&&r.settle!==se)return false;
+    return true;
+  }).sort((a,b)=>a.date.localeCompare(b.date));
+  const total=DB.reduce((s,r)=>s+r.income,0);
+  const pend=DB.filter(r=>r.settle==='미정산').reduce((s,r)=>s+r.income,0);
+  const done=DB.filter(r=>r.settle==='정산완료').reduce((s,r)=>s+r.income,0);
+  document.getElementById('settle-metrics').innerHTML=`
+    <div class="metric"><div class="metric-label">전체 수입</div><div class="metric-value">${w(total)}원</div></div>
+    <div class="metric"><div class="metric-label">정산완료</div><div class="metric-value" style="color:var(--green)">${w(done)}원</div></div>
+    <div class="metric"><div class="metric-label">미정산 잔액</div><div class="metric-value" style="color:var(--red)">${w(pend)}원</div></div>`;
+  document.getElementById('settle-body').innerHTML=rows.map(r=>`<tr>
+    <td><input type="checkbox" class="chk-row" value="${r.id}"></td>
+    <td>${r.date}</td><td>${r.company}</td><td>${r.client}</td>
+    <td class="num">${w(r.vol)}</td>
+    <td class="num" style="font-weight:700">${w(r.income)}</td>
+    <td><span class="badge ${r.settle==='정산완료'?'badge-ok':'badge-pend'}" style="cursor:pointer" onclick="toggleSettle(${r.id})">${r.settle}</span></td>
+    <td style="font-size:12px;color:var(--text3)">${r.memo}</td>
+  </tr>`).join('');
+}
+
+function toggleSettle(id){
+  const r=DB.find(x=>x.id===id);if(!r)return;
+  r.settle=r.settle==='미정산'?'정산완료':'미정산';
+  save();renderSettle();
+}
+function toggleAll(cb){document.querySelectorAll('.chk-row').forEach(c=>c.checked=cb.checked);}
+function getCheckedIds(){return[...document.querySelectorAll('.chk-row:checked')].map(c=>parseInt(c.value));}
+function bulkSettle(){
+  const ids=getCheckedIds();
+  if(!ids.length){alert('항목을 선택하세요.');return;}
+  ids.forEach(id=>{const r=DB.find(x=>x.id===id);if(r)r.settle='정산완료';});
+  save();renderSettle();alert(ids.length+'건 정산완료 처리되었습니다.');
+}
+function bulkUnsettle(){
+  const ids=getCheckedIds();
+  if(!ids.length){alert('항목을 선택하세요.');return;}
+  ids.forEach(id=>{const r=DB.find(x=>x.id===id);if(r)r.settle='미정산';});
+  save();renderSettle();alert(ids.length+'건 미정산으로 복원되었습니다.');
+}
+
+renderToday();
+</script>
+</body>
+</html>
